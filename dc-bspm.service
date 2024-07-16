@@ -1,0 +1,18 @@
+[Unit]
+Description=Data Collection BSPM Rest API
+Documentation=https://github.com/pithia-eu/DC-BSPM-API/blob/main/README.md
+
+[Service]
+Type=simple
+User=root
+Group=root
+TimeoutStartSec=0
+Restart=on-failure
+RestartSec=30s
+#ExecStartPre=
+ExecStart=/home/ubuntu/DC-BSPM-API/start_bspm.sh
+SyslogIdentifier=Diskutilization
+#ExecStop=
+
+[Install]
+WantedBy=multi-user.target

@@ -25,6 +25,7 @@ app = FastAPI(
     title="BSPM API: 3D-Kinetic plasmasphere model",
     description="The BSPM is a 3D-Kinetic semiempirical model of the plasmasphere developed by the Solar Wind Division of the Royal Belgian Institute for Space Aeronomy.",
     version="1.0.0",
+    root_path="/dc-bspm"
 )
 
 class ExecuteRequest(BaseModel):
@@ -88,11 +89,11 @@ async def run_execute_script(
 
     # Define the app name and script directory
     app_name = "BSPM_May2024.py"
-    script_dir = "/home/ubuntu/plasmasphere/DC-BPIM/bspm"
-    parent_dir = "/home/ubuntu/plasmasphere/DC-BPIM"
+    script_dir = "/home/ubuntu/DC-BSPM-API/DC-BSPM-MODEL"
+    parent_dir = "/home/ubuntu/DC-BSPM-API"
     
     # Set the environment variable
-    os.environ['LD_LIBRARY_PATH'] = f"/home/ubuntu/plasmasphere/DC-BPIM/bspm/Libs/iri2016"
+    os.environ['LD_LIBRARY_PATH'] = f"/home/ubuntu/DC-BSPM-API/DC-BSPM-MODEL/Libs/iri2016"
 
     # Define the output folder path
     output_folder = f"{parent_dir}/out/bspm/ubuntu/{executionid}"
