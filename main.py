@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 #from fastapi.openapi.models import Info
 from pydantic import BaseModel
 import subprocess
@@ -26,6 +27,15 @@ app = FastAPI(
     description="The BSPM is a 3D-Kinetic semiempirical model of the plasmasphere developed by the Solar Wind Division of the Royal Belgian Institute for Space Aeronomy.",
     version="1.0.0",
     root_path="/dc-bspm"
+)
+
+# Configure CORS for all domains
+app.add_middleware(
+    CORSMiddleware,
+    # allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
 )
 
 class ExecuteRequest(BaseModel):
