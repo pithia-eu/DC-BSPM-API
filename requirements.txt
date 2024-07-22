@@ -1,2 +1,7 @@
 fastapi==0.110.2
 uvicorn==0.29.0
+numpy==1.26.4
+matplotlib==3.9.1
+astropy==6.1.1
+pandas==2.2.2
+spacepy==0.6.0

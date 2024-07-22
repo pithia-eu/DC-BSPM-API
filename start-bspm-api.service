@@ -1,5 +1,5 @@
 [Unit]
-Description=BPIM API service
+Description=BSPM API service
 Documentation=https://github.com/pithia-eu/DC-BPIM/blob/main/README.md
 
 [Service]
@@ -10,7 +10,7 @@ TimeoutStartSec=0
 Restart=on-failure
 RestartSec=30s
 #ExecStartPre=
-ExecStart=/home/ubuntu/plasmasphere/DC-BPIM/start-api.sh
+ExecStart=/home/ubuntu/DC-BSPM-API/start_bspm.sh
 SyslogIdentifier=Diskutilization
 #ExecStop=
 

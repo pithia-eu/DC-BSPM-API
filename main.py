@@ -11,11 +11,21 @@ import shutil
 import zipfile
 from datetime import datetime
 
+app_name = "BSPM"
+# Get the current user's username dynamically
+username = os.getlogin()
+print(f"Running {app_name} API for user: {username}")
 # Get the full path to the directory containing the FastAPI script
 script_dir = os.path.dirname(os.path.abspath(__file__))
-out_dir = os.path.normpath(os.path.join(script_dir, "../out/"))
+out_dir = os.path.normpath(os.path.join(script_dir, "./out"))
+user_directory = f"{out_dir}/bspm/{username}"
+print("Output directory:", out_dir)
+print("Output user directory:", user_directory)
 # Create the full path to the execute.sh script
-execute_script_path = os.path.join(script_dir, "../bspm/execute.py")
+execute_script_dir = os.path.normpath(os.path.join(script_dir, "./DC-BSPM-MODEL"))
+execute_script_path = os.path.normpath(os.path.join(script_dir, "./DC-BSPM-MODEL/BSPM_May2024.py"))
+print("Execute script dir:", execute_script_dir)
+print("Execute script path:", execute_script_path)
 app = FastAPI(
     openapi_tags=[
         {"name": "Execute", "description": "Run/Returns the status of execution by date: year-month-day"},
@@ -97,17 +107,13 @@ async def run_execute_script(
     day = exec_date.day
     executionid = f"{year:04d}-{month:02d}-{day:02d}"
 
-    # Define the app name and script directory
-    app_name = "BSPM_May2024.py"
-    script_dir = "/home/ubuntu/DC-BSPM-API/DC-BSPM-MODEL"
-    parent_dir = "/home/ubuntu/DC-BSPM-API"
-    
     # Set the environment variable
-    os.environ['LD_LIBRARY_PATH'] = f"/home/ubuntu/DC-BSPM-API/DC-BSPM-MODEL/Libs/iri2016"
+    os.environ['LD_LIBRARY_PATH'] = f"{execute_script_dir}/Libs/iri2016"
 
     # Define the output folder path
-    output_folder = f"{parent_dir}/out/bspm/ubuntu/{executionid}"
-    python_command = f"IRI0_IRILIB64PATH=irilib64.so LD_PRELOAD=iri0.so python3.9 {script_dir}/{app_name} --year {year} --month {month} --day {day} --executionid {executionid}"
+    output_folder = f"{user_directory}/{executionid}"
+
+    python_command = f"IRI0_IRILIB64PATH=irilib64.so LD_PRELOAD=iri0.so python3 {execute_script_path} --year {year} --month {month} --day {day} --executionid {executionid}"
 
     # Check if rerun is provided, if true, remove the output folder
     if rerun and os.path.isdir(output_folder):
@@ -115,7 +121,7 @@ async def run_execute_script(
 
     # Check if the output folder exists; create it if it doesn't
     if not os.path.isdir(output_folder):
-        os.makedirs(output_folder)
+        os.makedirs(output_folder, exist_ok=True)
         with open(f"{output_folder}/app.log", 'w') as log_file:
             subprocess.Popen(python_command, shell=True, stdout=log_file, stderr=subprocess.STDOUT)
         return {"code": 0, "msg": f"Started a new execution of {app_name} by date {executionid}", "date": executionid, "status": "start"}
@@ -128,11 +134,6 @@ async def run_execute_script(
 
 @app.get("/executions", summary="Retrieve a list of user executions.", description="Returns a list of executions completed by the user.",tags=["Retrieve Executions"])
 async def get_user_executions():
-    # Get the current user's username
-    username = "ubuntu"
-
-    # Define the directory to list folders in
-    user_directory = f"{out_dir}/bspm/{username}/"
     if os.path.exists(user_directory) and os.path.isdir(user_directory):
         folder_list = [f for f in os.listdir(user_directory) if os.path.isdir(os.path.join(user_directory, f))]
         # Sort the folders by date in descending order
@@ -140,56 +141,59 @@ async def get_user_executions():
         execution_list = {}
         execution_list["progressing"] = []
         execution_list["completed"] = []
+        # First check folder_list is empty or not
+        if not folder_list:
+            return {"error": "No folders found in the user directory.", "status": "progressing"}
+        else:
+            for folder in folder_list:
+                folder_path = os.path.join(user_directory, folder)
+                # Check the last 2 lines of the log file to store in the log variable, and check if the execution is completed. The log file is stored in the folder with name 'app.log'
+                log_file = os.path.join(folder_path, "app.log")
+                status = "progressing"
+                log = None
+                execution_time = None
+                total_time = 24
+                if os.path.exists(log_file):
+                    with open(log_file, "r") as f:
+                        log = f.readlines()[-3:]
+                        # Last 3 lines of the log file if the execution is completed:
+                        # BSPM COMPLETED\n
+                        # 2050.457169532776  seconds\n
+                        # Loop all lines in the log variable to check if the execution is completed
+                        for line in log:
+                            if "BSPM COMPLETED" in line:
+                                status = "completed"
+                            if "seconds" in line:
+                                execution_time = float(line.split(' ')[0])
 
-        for folder in folder_list:
-            folder_path = os.path.join(user_directory, folder)
-            # Check the last 2 lines of the log file to store in the log variable, and check if the execution is completed. The log file is stored in the folder with name 'app.log'
-            log_file = os.path.join(folder_path, "app.log")
-            status = "progressing"
-            log = None
-            execution_time = None
-            total_time = 24
-            if os.path.exists(log_file):
-                with open(log_file, "r") as f:
-                    log = f.readlines()[-3:]
-                    # Last 3 lines of the log file if the execution is completed:
-                    # BSPM COMPLETED\n
-                    # 2050.457169532776  seconds\n
-                    # Loop all lines in the log variable to check if the execution is completed
-                    for line in log:
-                        if "BSPM COMPLETED" in line:
-                            status = "completed"
-                        if "seconds" in line:
-                            execution_time = float(line.split(' ')[0])
+                # Count the number of .png files in the folder
+                png_files = [f for f in os.listdir(folder_path) if f.endswith(".png")]
+                num_png_files = len(png_files)
+                # Determine the status based on the number of .png files
+                if status == "completed":
+                    total_time = num_png_files
+                else:
+                    status = "completed" if num_png_files == total_time else "progressing"
+                # Add execution information to the list
+                execution_info = {
+                    "date": folder,
+                    "status": status,
+                    "progress": f"{num_png_files}/{total_time}",
+                }
+                if status == "completed":
+                    execution_info["execution_time"] = execution_time
+                    execution_list["completed"].append(execution_info)
+                else:
+                    execution_info["log"] = log
+                    execution_list["progressing"].append(execution_info)
+            # Convert the folder list to JSON format
+            user_directories = {"user": username, "executions": execution_list}
+            response = JSONResponse(content=user_directories)
+            response.headers["Cache-Control"] = "no-store, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "Mon, 01 Jan 2000 00:00:00 GMT"
 
-            # Count the number of .png files in the folder
-            png_files = [f for f in os.listdir(folder_path) if f.endswith(".png")]
-            num_png_files = len(png_files)
-            # Determine the status based on the number of .png files
-            if status == "completed":
-                total_time = num_png_files
-            else:
-                status = "completed" if num_png_files == total_time else "progressing"
-            # Add execution information to the list
-            execution_info = {
-                "date": folder,
-                "status": status,
-                "progress": f"{num_png_files}/{total_time}",
-            }
-            if status == "completed":
-                execution_info["execution_time"] = execution_time
-                execution_list["completed"].append(execution_info)
-            else:
-                execution_info["log"] = log
-                execution_list["progressing"].append(execution_info)
-        # Convert the folder list to JSON format
-        user_directories = {"user": username, "executions": execution_list}
-        response = JSONResponse(content=user_directories)
-        response.headers["Cache-Control"] = "no-store, max-age=0"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "Mon, 01 Jan 2000 00:00:00 GMT"
-
-        return response
+            return response
     else:
         return {"error": f"The directory '{user_directory}' does not exist or / is not a directory."}
 
@@ -199,13 +203,11 @@ async def get_plot_image(
     date: str,
     hour: int
 ):
-    # Get the current user's username
-    username = "ubuntu"
     # Construct the filename pattern based on the input parameters
     filename_pattern = f"*_{date}_{hour:02d}h*.png"
     print(filename_pattern)
     # Use glob to search for files matching the pattern
-    matching_files = glob.glob(os.path.join(f"{out_dir}/bspm/{username}/{date}/", filename_pattern))
+    matching_files = glob.glob(os.path.join(f"{user_directory}/{date}/", filename_pattern))
 
     # Check if any matching files were found
     if matching_files:
@@ -216,7 +218,7 @@ async def get_plot_image(
         return FileResponse(image_path, media_type="image/png")
     else:
         # Get the list of files in the directory
-        files = os.listdir(f"{out_dir}/bspm/{username}/{date}/")
+        files = os.listdir(f"{user_directory}/{date}/")
         # Return the list of files with extension .png
         files = [f for f in files if f.endswith(".png")]
         return {"error": f"Image not found for the specified date and hour. The execution for {date} is in progress.", "available_plots": files, "status": "progressing"}
@@ -227,7 +229,7 @@ async def download_execution_data(date: str):
     # Get the current user's username
     username = "ubuntu"
     # Construct the path to the execution folder
-    execution_path = os.path.join(f"{out_dir}/bspm/{username}/", date)
+    execution_path = os.path.join(f"{user_directory}/", date)
 
     # Check if the execution folder exists
     if os.path.exists(execution_path) and os.path.isdir(execution_path):
@@ -243,7 +245,7 @@ async def download_execution_data(date: str):
         if status == "completed":
             # Create a temporary zip file
             zip_filename = f"{date}.zip"
-            zip_filepath = os.path.join(f"{out_dir}/bspm/{username}/", zip_filename)
+            zip_filepath = os.path.join(f"{user_directory}/", zip_filename)
             with zipfile.ZipFile(zip_filepath, "w", zipfile.ZIP_DEFLATED) as zipf:
                 # Recursively add all files and subdirectories to the zip file
                 for root, dirs, files in os.walk(execution_path):

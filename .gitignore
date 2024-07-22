@@ -64,7 +64,7 @@ db.sqlite3-journal
 # Flask stuff:
 instance/
 .webassets-cache
-
+https://github.com/pithia-eu/DC-BSPM-MODEL.git
 # Scrapy stuff:
 .scrapy
 
@@ -103,7 +103,7 @@ ipython_config.py
 
 # pdm
 #   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#pdm.lock
+#pdm.lockhttps://github.com/pithia-eu/DC-BSPM-MODEL.git
 #   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
 #   in version control.
 #   https://pdm.fming.dev/#use-with-ide
@@ -165,3 +165,4 @@ out/
 /.idea/DC-BSPM-API.iml
 /.idea/modules.xml
 /.idea/workspace.xml
+DC-BSPM-MODEL/
