@@ -13,7 +13,7 @@ from datetime import datetime
 
 app_name = "BSPM"
 # Get the current user's username dynamically
-username = os.getlogin()
+username = os.environ.get('USER')
 print(f"Running {app_name} API for user: {username}")
 # Get the full path to the directory containing the FastAPI script
 script_dir = os.path.dirname(os.path.abspath(__file__))
